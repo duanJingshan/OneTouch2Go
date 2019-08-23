@@ -365,7 +365,7 @@ int main()
 			}
 		}
 	}
-	/*
+	
 	for (i = 0; i < MAX_NUMBER; i++) {
 		gaLayerNumber[i] = 0; //a[i],表示device i有多少层
 		gaDevID[i] = 0;
@@ -375,7 +375,7 @@ int main()
 			}
 		}
 	}
-	*/
+	
 }
 
 // 运行程序: Ctrl + F5 或调试 >“开始执行(不调试)”菜单
