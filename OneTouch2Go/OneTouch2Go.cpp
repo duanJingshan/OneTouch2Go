@@ -28,7 +28,7 @@ string getFunction(string strName)
 		}
 	}
 	//没找到
-	return NULL;
+	return "";
 }
 /*
 string getFunction(char* cpName)
@@ -69,38 +69,42 @@ constexpr auto UNKNOWN_EVENT = 4;
 int giDevNumber;
 int gaDevID[MAX_NUMBER];  //a[i],记录dev i 的ID号
 int gaLayerNumber[MAX_NUMBER]; //a[i],表示device i有多少层
-char* gcpLayerName[MAX_NUMBER][MAX_NUMBER]; //a[i][j],记录device i,第j层的名字
+string gcpLayerName[MAX_NUMBER][MAX_NUMBER]; //a[i][j],记录device i,第j层的名字
 int gaEntityNumber[MAX_NUMBER][MAX_NUMBER]; //a[i][j]，表示device i,第j层有多少个实体
 int gaEntityID[MAX_NUMBER][MAX_NUMBER][MAX_NUMBER]; //a[i][j][k],表示device i 的第i层，第k个实体的ID号
-void myStrcpy(char* dst, string& src) //只保留ASCII码大于32的字符，32为空格，以下的都是控制字符
+void myStrcpy(string& dst, string& src) //只保留ASCII码大于32的字符，32为空格，以下的都是控制字符
 {
-	size_t i, j;
-	j = 0;
-	for (i = 0; i < strlen(src.c_str()); i++) {
-		if (src[i] > 32 || src[i] < 0) {
-			dst[j] = src.c_str()[i];
-			j++;
+	size_t i;
+	const char *cpSrc;
+	dst.clear();
+
+	if (src.empty()) {
+		return dst.clear();
+	}
+	cpSrc = src.c_str();
+	for (i = 0; i < strlen(cpSrc); i++) {
+		if (cpSrc[i] > 32 || cpSrc[i] < 0) {
+			dst.append(1, cpSrc[i]);
 		}
 	}
-	dst[j] = 0;
 }
 
 int getEvent(string& strpLine)
 {
 	int retval;
-	retval = strpLine.find("deviceID");
+	retval = (int)strpLine.find("deviceID");
 	if (retval >= 0) {
 		return DEV_EVENT;
 	}
-	retval = strpLine.find("layer");
+	retval = (int)strpLine.find("layer");
 	if (retval >= 0) {
 		return LAYER_EVENT;
 	}
-	retval = strpLine.find("entityID");
+	retval = (int)strpLine.find("entityID");
 	if (retval >= 0) {
 		return ENTITY_EVENT;
 	}
-	retval = strpLine.find("-------------");
+	retval = (int)strpLine.find("-------------");
 	if (retval >= 0) {
 		return END_EVENT;
 	}
@@ -139,7 +143,6 @@ int idle4DevFsm(int iE, string& strpLine)
 int idle4LayerFsm(int iE, string& strpLine)
 {
 	string strTmp;
-	char* cpTmp;
 	int iLayerNumber;
 	int iS = IDLE4LAYER_STATE;
 
@@ -152,14 +155,9 @@ int idle4LayerFsm(int iE, string& strpLine)
 		//截断取得名字
 		strTmp = strpLine.substr(strpLine.find("=") + 1, strpLine.length() - strpLine.find("="));
 		//整理内容，只保留大于32的字符
-		cpTmp = (char*)malloc(strlen(strTmp.c_str())+10);
-		if (cpTmp == NULL) {
-			return iS;
-		}
-		myStrcpy(cpTmp, strTmp);
 		iLayerNumber = gaLayerNumber[giDevNumber - 1];//当前设备，当前的层次序号
 		//将层次名称记录下来
-		gcpLayerName[giDevNumber - 1][iLayerNumber] = cpTmp;
+		myStrcpy(gcpLayerName[giDevNumber - 1][iLayerNumber], strTmp);
 
 		gaLayerNumber[giDevNumber - 1]++;
 
@@ -244,10 +242,10 @@ int EntityFsm(int iE, string& strpLine)
 void readMapFile(ifstream& f)
 {
 	string strTmp;
+	string csLeft;
+	string csRight;
 	string csLayer;
 	string csFunc;
-	char* cpLayer;
-	char* cpFunc;
 	int i = 0;
 	while (!f.eof()) {
 		getline(f, strTmp);
@@ -257,25 +255,16 @@ void readMapFile(ifstream& f)
 		if (strTmp.find("=") < 0) {
 			continue;
 		}
-		csLayer = strTmp.substr(0,strTmp.find("=") - 1);
-		cpLayer = (char*)malloc(strlen(csLayer.c_str()) + 100);
-		if (cpLayer == NULL) {
-			return;
-		}
-		myStrcpy(cpLayer, csLayer);
+		csLeft = strTmp.substr(0,strTmp.find("=") - 1);
 
-		csFunc = strTmp.substr(strTmp.find("=") + 1, strTmp.length() - strTmp.find("="));
-		cpFunc = (char*)malloc(strlen(csFunc.c_str())+100);
-		if (cpFunc == NULL) {
-			free(cpLayer);
-			return;
-		}
-		myStrcpy(cpFunc, csFunc);
+		csRight = strTmp.substr(strTmp.find("=") + 1, strTmp.length() - strTmp.find("=")); 
 
-		aFunctionMap[i].LayerName = cpLayer;
-		free(cpLayer); //？？？
-		aFunctionMap[i].funcitonName = cpFunc;
-		free(cpFunc);
+		myStrcpy(csLayer, csLeft);
+
+		myStrcpy(csFunc, csRight);
+
+		aFunctionMap[i].LayerName = csLayer;
+		aFunctionMap[i].funcitonName = csFunc;
 		i++;
 	}
 }
@@ -307,7 +296,7 @@ int main()
 		gaLayerNumber[i] = 0; //a[i],表示device i有多少层
 		gaDevID[i] = 0;
 		for (j = 0; j < MAX_NUMBER; j++) {
-			gcpLayerName[i][j] = NULL; //a[i][j],是device i,第j层的名字
+			gcpLayerName[i][j].clear(); //a[i][j],是device i,第j层的名字
 			gaEntityNumber[i][j] = 0;//a[i][j]，表示device i,第j层有多少个实体
 			for (k = 0; k < MAX_NUMBER; k++) {
 				gaEntityID[i][j][k] = 0;
@@ -358,24 +347,13 @@ int main()
 				//csTmp.Format("%d",gaEntityID[i][j][k]);
 				//csCmd += " ";
 				//csCmd += csTmp;
-				csTmp.Format("%d %d", gaDevID[i], gaEntityID[i][j][k]);
+				csTmp.Format("%d %s %d", gaDevID[i], gcpLayerName[i][j].c_str(), gaEntityID[i][j][k]);
 				ShellExecute(NULL, _T("open"), csCmd, csTmp, NULL, SW_SHOWNORMAL);
 				//ShellExecute(NULL,_T("open"),csCmd,NULL,NULL,SW_SHOWNORMAL);
 				cout << "启动网元 " << gaDevID[i] << " 的" << csCmd << "层 实体 " << gaEntityID[i][j][k] << endl;
 			}
 		}
 	}
-	
-	for (i = 0; i < MAX_NUMBER; i++) {
-		gaLayerNumber[i] = 0; //a[i],表示device i有多少层
-		gaDevID[i] = 0;
-		for (j = 0; j < MAX_NUMBER; j++) {
-			if (gcpLayerName[i][j] != NULL) { //a[i][j],是device i,第j层的名字
-				free(gcpLayerName[i][j]);
-			}
-		}
-	}
-	
 }
 
 // 运行程序: Ctrl + F5 或调试 >“开始执行(不调试)”菜单
